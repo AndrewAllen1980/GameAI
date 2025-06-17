@@ -43,13 +43,19 @@
 
 void save(char* fn, int g[][W], int inc);
 void savescore(void);
-void updateview(void);
 int survey(Coord);
 
 typedef struct { int r, c; } Coord;
 int rr() { return rand() % H; }
 int rc() { return rand() % W; }
-Coord rl() { return (Coord) { rr(), rc() }; }
+
+Coord rl() { 
+    Coord rloc;
+    rloc.r = rr();
+    rloc.c = rc();
+    return rloc;
+}
+
 Coord climbhill(Coord loc);
 typedef struct { int n, s, w, e; } Bounds;
 
@@ -106,7 +112,7 @@ Coord* find(int target) {
     if (!locs) { perror("find fail"); exit(1); }
     for (int r = 0; r < H; r++)
         for (int c = 0; c < W; c++)
-            if (environment[r][c] == target) {
+            if (percept[r][c] == target) {
                 Coord l = { r, c };
                 locs[i] = l;
                 i++;
@@ -139,18 +145,15 @@ int survey(Coord loc) {
     return minecount;
 }
 
-int query(Coord loc) {
-    if (environment[loc.r][loc.c] == MINE) {
-        percept[loc.r][loc.c] = EXPL;
-    }
+int reveal(Coord loc) {
+    if (environment[loc.r][loc.c] == MINE) { percept[loc.r][loc.c] = EXPL; }
     else {
         Bounds surveyarea = findBounds(loc);
-        for (int laty = surveyarea.n; laty <= surveyarea.s; laty++) {
+        for (int laty = surveyarea.n; laty <= surveyarea.s; laty++) 
             for (int longx = surveyarea.w; longx <= surveyarea.e; longx++) {
                 Coord coord = { laty, longx };
                 percept[laty][longx] = survey(coord);
             }
-        }
     }
     return environment[loc.r][loc.c];
 }
@@ -173,7 +176,7 @@ void play() {
         bool safe = true;
         while (safe) {
             Coord q = choose();
-            if (query(q) == MINE) safe = false;
+            if (reveal(q) == MINE) safe = false;
             score++;
         }
         save(ENVIRONMENT_FN, environment, gamecount);
@@ -183,9 +186,9 @@ void play() {
 }
 
 void save(char* fn, int g[][W], int inc) {
-    char fname[BUFF];
-    sprintf(fname, AIDAT_DIR "%s" FN_INC FN_EXT, fn, inc);
-    FILE* f = fopen(fname, "w");
+    char path[BUFF];
+    sprintf(path, AIDAT_DIR "%s" FN_INC FN_EXT, fn, inc);
+    FILE* f = fopen(path, "w");
     if (f == NULL) { perror("save fail"); exit(1); }
     for (int r = 0; r < H; r++) {
         for (int c = 0; c < W; c++) {
@@ -201,7 +204,7 @@ void savescore() {
     char fname[BUFF];
     sprintf(fname, AIDAT_DIR "%s%s", SCORE_FN, FN_EXT);
     FILE* f = fopen(fname, "a");
-    if (f == NULL) { perror("recordscore fail"); exit(1); }
+    if (f == NULL) { perror("savescore fail"); exit(1); }
     fprintf(f, "Game %d: %d\n", gamecount, score);
     fclose(f);
 }
@@ -211,3 +214,6 @@ int main(int argc, char* argv[]) {
     play();
     return 0;
 }
+
+
+// TODO: Reduce time complexity with hash tables
